@@ -140,7 +140,9 @@ let masterGain;
 
 function createSynth(waveform) {
     return new Tone.Synth({
-        oscillator: { type: waveform },
+        oscillator: {
+            type: waveform
+        },
         envelope: {
             attack: 0.04,
             decay: 0.12,
