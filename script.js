@@ -1,29 +1,37 @@
-///////////// Page Elements
-const canvas = document.getElementById("sound-canvas");
+"use strict";
+
+/*
+This script maps each object's vertical position to a note name and horizontal
+position to an octave. It also runs the existing repeating garden patterns.
+*/
+
+/* Page elements ------------------------------------------------------------- */
+const soundCanvas = document.getElementById("sound-canvas");
 const playButton = document.getElementById("play-button");
-const objectElements = document.querySelectorAll(".sound-object");
-const infoElements = [
+const soundObjectElements = document.querySelectorAll(".soundObject");
+const objectInfoElements = [
     document.getElementById("object-one-info"),
     document.getElementById("object-two-info")
 ];
 
-///////////// Musical Mapping
+/* Musical mapping ----------------------------------------------------------- */
 const noteNames = ["C", "D", "E", "F", "G", "A", "B"];
 const octaves = [1, 2, 3, 4, 5, 6, 7, 8];
 const minimumDelay = 700;
 const maximumDelay = 1400;
 
-const soundObjects = [
-    createObjectState(objectElements[0], infoElements[0], 0.28, 0.65, "triangle"),
-    createObjectState(objectElements[1], infoElements[1], 0.68, 0.35, "triangle")
-];
-
-function createObjectState(element, info, x, y, waveform) {
+function createObjectState(
+    element,
+    infoElement,
+    xPosition,
+    yPosition,
+    waveform
+) {
     return {
         element,
-        info,
-        x,
-        y,
+        infoElement,
+        xPosition,
+        yPosition,
         note: "",
         baseFrequency: 0,
         playedFrequency: 0,
@@ -36,98 +44,13 @@ function createObjectState(element, info, x, y, waveform) {
     };
 }
 
-///////////// Dragging
-let activeDrag = null;
+const soundObjects = [
+    createObjectState(soundObjectElements[0], objectInfoElements[0], 0.28, 0.65, "triangle"),
+    createObjectState(soundObjectElements[1], objectInfoElements[1], 0.68, 0.35, "triangle")
+];
 
-function beginDragging(clientX, clientY, soundObject, inputType, pointerId = null) {
-    if (activeDrag) return;
-
-    const objectRect = soundObject.element.getBoundingClientRect();
-    activeDrag = {
-        soundObject,
-        inputType,
-        pointerId,
-        offsetX: clientX - objectRect.left,
-        offsetY: clientY - objectRect.top
-    };
-
-    soundObject.element.classList.add("is-dragging");
-    startObjectSound(soundObject);
-}
-
-function moveDraggedObject(clientX, clientY) {
-    if (!activeDrag) return;
-
-    const soundObject = activeDrag.soundObject;
-    const canvasRect = canvas.getBoundingClientRect();
-    const maximumX = canvas.clientWidth - soundObject.element.offsetWidth;
-    const maximumY = canvas.clientHeight - soundObject.element.offsetHeight;
-    const objectX = clientX - canvasRect.left - activeDrag.offsetX;
-    const objectY = clientY - canvasRect.top - activeDrag.offsetY;
-
-    soundObject.x = Math.min(Math.max(objectX / maximumX, 0), 1);
-    soundObject.y = Math.min(Math.max(objectY / maximumY, 0), 1);
-    updateObject(soundObject);
-}
-
-function finishDragging(soundObject) {
-    if (!activeDrag || activeDrag.soundObject !== soundObject) return;
-
-    soundObject.element.classList.remove("is-dragging");
-    stopObjectSound(soundObject);
-    activeDrag = null;
-}
-
-// Mouse Events follow the class example: press, move over the canvas, then release.
-soundObjects.forEach((soundObject) => {
-    soundObject.element.addEventListener("mousedown", (event) => {
-        if (event.button !== 0) return;
-        event.preventDefault();
-        beginDragging(event.clientX, event.clientY, soundObject, "mouse");
-    });
-});
-
-canvas.addEventListener("mousemove", (event) => {
-    if (!activeDrag || activeDrag.inputType !== "mouse") return;
-    moveDraggedObject(event.clientX, event.clientY);
-});
-
-window.addEventListener("mouseup", () => {
-    if (!activeDrag || activeDrag.inputType !== "mouse") return;
-    finishDragging(activeDrag.soundObject);
-});
-
-// Pointer Events keep the same interaction available on touchscreens and pens.
-soundObjects.forEach((soundObject) => {
-    soundObject.element.addEventListener("pointerdown", (event) => {
-        if (event.pointerType === "mouse") return;
-        if (activeDrag) return;
-        event.preventDefault();
-        beginDragging(event.clientX, event.clientY, soundObject, "pointer", event.pointerId);
-        soundObject.element.setPointerCapture(event.pointerId);
-    });
-
-    soundObject.element.addEventListener("pointermove", (event) => {
-        if (!activeDrag || activeDrag.inputType !== "pointer") return;
-        if (activeDrag.soundObject !== soundObject) return;
-        if (activeDrag.pointerId !== event.pointerId) return;
-        moveDraggedObject(event.clientX, event.clientY);
-    });
-
-    soundObject.element.addEventListener("pointerup", (event) => {
-        if (!activeDrag || activeDrag.pointerId !== event.pointerId) return;
-        finishDragging(soundObject);
-    });
-
-    soundObject.element.addEventListener("pointercancel", (event) => {
-        if (!activeDrag || activeDrag.pointerId !== event.pointerId) return;
-        finishDragging(soundObject);
-    });
-});
-
-///////////// Position to Note
-function positionToNote(xPosition, yPosition) {
-    // Horizontal position selects octave 1 to 8.
+function mapPositionToNote(xPosition, yPosition) {
+    // Horizontal position selects octaves 1 through 8.
     const octaveIndex = Math.round(xPosition * (octaves.length - 1));
 
     // Vertical position selects C at the bottom through B at the top.
@@ -136,12 +59,12 @@ function positionToNote(xPosition, yPosition) {
 }
 
 function randomiseFrequency(baseFrequency) {
-    // A maximum variation of 0.3% changes the Hz slightly but preserves the perceived note.
+    // The 0.3% variation changes the measured frequency without changing the note.
     const maximumVariation = baseFrequency * 0.003;
     return baseFrequency + (Math.random() * 2 - 1) * maximumVariation;
 }
 
-function volumeCompensationForNote(note) {
+function getVolumeCompensation(note) {
     const octave = Number(note.slice(-1));
     const compensationByOctave = {
         1: 8,
@@ -154,7 +77,7 @@ function volumeCompensationForNote(note) {
         8: -4
     };
 
-    // Low octaves receive a safe boost; high octaves are reduced slightly.
+    // A bounded boost balances low octaves while high octaves remain comfortable.
     return compensationByOctave[octave];
 }
 
@@ -164,19 +87,22 @@ function choosePlayedFrequency(soundObject) {
 }
 
 function updateObject(soundObject) {
-    const maximumX = canvas.clientWidth - soundObject.element.offsetWidth;
-    const maximumY = canvas.clientHeight - soundObject.element.offsetHeight;
-    const selectedNote = positionToNote(soundObject.x, soundObject.y);
+    const maximumX = soundCanvas.clientWidth - soundObject.element.offsetWidth;
+    const maximumY = soundCanvas.clientHeight - soundObject.element.offsetHeight;
+    const selectedNote = mapPositionToNote(
+        soundObject.xPosition,
+        soundObject.yPosition
+    );
     const noteChanged = selectedNote !== soundObject.note;
 
-    soundObject.element.style.left = maximumX * soundObject.x + "px";
-    soundObject.element.style.top = maximumY * soundObject.y + "px";
+    soundObject.element.style.left = `${maximumX * soundObject.xPosition}px`;
+    soundObject.element.style.top = `${maximumY * soundObject.yPosition}px`;
 
-    // Randomise only when a different note area is entered, not on every mousemove event.
+    // Frequency variation changes only after the object enters a new note area.
     if (noteChanged) {
         soundObject.note = selectedNote;
         soundObject.baseFrequency = Tone.Frequency(selectedNote).toFrequency();
-        soundObject.volumeCompensation = volumeCompensationForNote(selectedNote);
+        soundObject.volumeCompensation = getVolumeCompensation(selectedNote);
         choosePlayedFrequency(soundObject);
 
         if (soundObject.synth) {
@@ -186,7 +112,10 @@ function updateObject(soundObject) {
 
         if (soundObject.previewSynth) {
             soundObject.previewSynth.frequency.rampTo(soundObject.playedFrequency, 0.04);
-            soundObject.previewSynth.volume.rampTo(-18 + soundObject.volumeCompensation, 0.06);
+            soundObject.previewSynth.volume.rampTo(
+                -18 + soundObject.volumeCompensation,
+                0.06
+            );
         }
     }
 
@@ -195,22 +124,21 @@ function updateObject(soundObject) {
 
 function updateTestingLabel(soundObject) {
     const objectNumber = soundObjects.indexOf(soundObject) + 1;
+    const gainPrefix = soundObject.volumeCompensation >= 0 ? "+" : "";
 
-    soundObject.info.textContent =
-        "Object " + objectNumber + ": " +
-        soundObject.note + " - " +
-        soundObject.playedFrequency.toFixed(1) + " Hz " +
-        "(base " + soundObject.baseFrequency.toFixed(1) + " Hz) - Gain: " +
-        (soundObject.volumeCompensation >= 0 ? "+" : "") +
-        soundObject.volumeCompensation + " dB";
+    soundObject.infoElement.textContent =
+        `Object ${objectNumber}: ${soundObject.note} - ` +
+        `${soundObject.playedFrequency.toFixed(1)} Hz ` +
+        `(base ${soundObject.baseFrequency.toFixed(1)} Hz) - ` +
+        `Gain: ${gainPrefix}${soundObject.volumeCompensation} dB`;
 }
 
-///////////// Sound
-let gardenPlaying = false;
-let buttonBusy = false;
+/* Audio --------------------------------------------------------------------- */
+let isGardenPlaying = false;
+let isButtonBusy = false;
 let masterGain;
 
-function makeSynth(waveform) {
+function createSynth(waveform) {
     return new Tone.Synth({
         oscillator: { type: waveform },
         envelope: {
@@ -223,23 +151,24 @@ function makeSynth(waveform) {
 }
 
 function createPatternSynth(soundObject) {
-    soundObject.synth = makeSynth(soundObject.waveform).connect(masterGain);
+    soundObject.synth = createSynth(soundObject.waveform).connect(masterGain);
     soundObject.synth.volume.value = soundObject.volumeCompensation;
 }
 
 async function startObjectSound(soundObject) {
+    // Tone.js must start within a user gesture before either drag preview can play.
     await Tone.start();
-    if (!activeDrag || activeDrag.soundObject !== soundObject || buttonBusy) return;
+    if (!activeDrag || activeDrag.soundObject !== soundObject || isButtonBusy) return;
 
     choosePlayedFrequency(soundObject);
 
-    if (gardenPlaying && soundObject.synth) {
+    if (isGardenPlaying && soundObject.synth) {
         soundObject.usingPatternSynthForDrag = true;
         soundObject.synth.triggerAttack(soundObject.playedFrequency, Tone.now(), 0.55);
         return;
     }
 
-    soundObject.previewSynth = makeSynth(soundObject.waveform).toDestination();
+    soundObject.previewSynth = createSynth(soundObject.waveform).toDestination();
     soundObject.previewSynth.volume.value = -18 + soundObject.volumeCompensation;
     soundObject.previewSynth.triggerAttack(soundObject.playedFrequency);
 }
@@ -261,15 +190,14 @@ function stopObjectSound(soundObject) {
     }, 400);
 }
 
-///////////// Repeating Patterns
-function randomDelay() {
+function getRandomDelay() {
     return minimumDelay + Math.random() * (maximumDelay - minimumDelay);
 }
 
 function playRepeatingNote(soundObject) {
-    if (gardenPlaying === false || !soundObject.synth) return;
+    if (!isGardenPlaying || !soundObject.synth) return;
 
-    // Each repeat receives a small random Hz and volume variation.
+    // Small frequency and velocity changes keep each existing pattern organic.
     choosePlayedFrequency(soundObject);
     const velocity = 0.48 + Math.random() * 0.12;
     soundObject.synth.triggerAttackRelease(
@@ -281,17 +209,16 @@ function playRepeatingNote(soundObject) {
 
     soundObject.timerId = setTimeout(() => {
         playRepeatingNote(soundObject);
-    }, randomDelay());
+    }, getRandomDelay());
 }
 
-///////////// Master Play and Stop
 async function startGarden() {
     await Tone.start();
-    if (gardenPlaying) return;
+    if (isGardenPlaying) return;
 
     masterGain = new Tone.Gain(0).toDestination();
     soundObjects.forEach(createPatternSynth);
-    gardenPlaying = true;
+    isGardenPlaying = true;
     playButton.textContent = "Stop Garden";
     masterGain.gain.rampTo(0.16, 0.1);
 
@@ -300,14 +227,14 @@ async function startGarden() {
 }
 
 function wait(milliseconds) {
-    return new Promise((resolve) => setTimeout(resolve, milliseconds));
+    return new Promise(resolve => setTimeout(resolve, milliseconds));
 }
 
 async function stopGarden() {
-    gardenPlaying = false;
+    isGardenPlaying = false;
     playButton.textContent = "Play Garden";
 
-    soundObjects.forEach((soundObject) => {
+    soundObjects.forEach(soundObject => {
         clearTimeout(soundObject.timerId);
         soundObject.timerId = null;
         stopObjectSound(soundObject);
@@ -317,7 +244,7 @@ async function stopGarden() {
     if (masterGain) masterGain.gain.rampTo(0, 0.2);
     await wait(300);
 
-    soundObjects.forEach((soundObject) => {
+    soundObjects.forEach(soundObject => {
         if (soundObject.synth) soundObject.synth.dispose();
         soundObject.synth = null;
     });
@@ -327,24 +254,122 @@ async function stopGarden() {
 }
 
 async function toggleGarden() {
-    if (buttonBusy) return;
+    if (isButtonBusy) return;
 
-    buttonBusy = true;
+    isButtonBusy = true;
     playButton.disabled = true;
 
-    if (gardenPlaying) {
+    if (isGardenPlaying) {
         await stopGarden();
     } else {
         await startGarden();
     }
 
     playButton.disabled = false;
-    buttonBusy = false;
+    isButtonBusy = false;
 }
 
-playButton.addEventListener("click", toggleGarden);
+/* Dragging ------------------------------------------------------------------ */
+let activeDrag = null;
 
-///////////// Setup
+function beginDragging(
+    clientX,
+    clientY,
+    soundObject,
+    inputType,
+    pointerId = null
+) {
+    if (activeDrag) return;
+
+    const objectBounds = soundObject.element.getBoundingClientRect();
+    activeDrag = {
+        soundObject,
+        inputType,
+        pointerId,
+        offsetX: clientX - objectBounds.left,
+        offsetY: clientY - objectBounds.top
+    };
+
+    soundObject.element.classList.add("isDragging");
+    startObjectSound(soundObject);
+}
+
+function moveDraggedObject(clientX, clientY) {
+    if (!activeDrag) return;
+
+    const soundObject = activeDrag.soundObject;
+    const canvasBounds = soundCanvas.getBoundingClientRect();
+    const maximumX = soundCanvas.clientWidth - soundObject.element.offsetWidth;
+    const maximumY = soundCanvas.clientHeight - soundObject.element.offsetHeight;
+    const objectX = clientX - canvasBounds.left - activeDrag.offsetX;
+    const objectY = clientY - canvasBounds.top - activeDrag.offsetY;
+
+    soundObject.xPosition = Math.min(Math.max(objectX / maximumX, 0), 1);
+    soundObject.yPosition = Math.min(Math.max(objectY / maximumY, 0), 1);
+    updateObject(soundObject);
+}
+
+function finishDragging(soundObject) {
+    if (!activeDrag || activeDrag.soundObject !== soundObject) return;
+
+    soundObject.element.classList.remove("isDragging");
+    stopObjectSound(soundObject);
+    activeDrag = null;
+}
+
+/* User input and setup ------------------------------------------------------ */
+soundObjects.forEach(soundObject => {
+    soundObject.element.addEventListener("mousedown", event => {
+        if (event.button !== 0) return;
+        event.preventDefault();
+        beginDragging(event.clientX, event.clientY, soundObject, "mouse");
+    });
+});
+
+soundCanvas.addEventListener("mousemove", event => {
+    if (!activeDrag || activeDrag.inputType !== "mouse") return;
+    moveDraggedObject(event.clientX, event.clientY);
+});
+
+window.addEventListener("mouseup", () => {
+    if (!activeDrag || activeDrag.inputType !== "mouse") return;
+    finishDragging(activeDrag.soundObject);
+});
+
+// Pointer events preserve the same drag interaction on touchscreens and pens.
+soundObjects.forEach(soundObject => {
+    soundObject.element.addEventListener("pointerdown", event => {
+        if (event.pointerType === "mouse" || activeDrag) return;
+        event.preventDefault();
+        beginDragging(
+            event.clientX,
+            event.clientY,
+            soundObject,
+            "pointer",
+            event.pointerId
+        );
+        soundObject.element.setPointerCapture(event.pointerId);
+    });
+
+    soundObject.element.addEventListener("pointermove", event => {
+        if (!activeDrag || activeDrag.inputType !== "pointer") return;
+        if (activeDrag.soundObject !== soundObject) return;
+        if (activeDrag.pointerId !== event.pointerId) return;
+        moveDraggedObject(event.clientX, event.clientY);
+    });
+
+    soundObject.element.addEventListener("pointerup", event => {
+        if (!activeDrag || activeDrag.pointerId !== event.pointerId) return;
+        finishDragging(soundObject);
+    });
+
+    soundObject.element.addEventListener("pointercancel", event => {
+        if (!activeDrag || activeDrag.pointerId !== event.pointerId) return;
+        finishDragging(soundObject);
+    });
+});
+
+playButton.addEventListener("click", toggleGarden);
 soundObjects.forEach(updateObject);
 
 window.addEventListener("resize", () => {

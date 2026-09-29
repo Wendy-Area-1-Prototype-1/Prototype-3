@@ -9,6 +9,10 @@
     <script src="script.js" defer></script>
 </head>
 <body>
+    <!--
+    This prototype tests a two-dimensional mapping: vertical position selects a
+    note name, while horizontal position selects its octave.
+    -->
     <main class="prototype">
         <header class="intro">
             <p class="eyebrow">Area 1 - Garden of Sounds</p>
@@ -16,23 +20,35 @@
             <p>Move vertically from C to B and horizontally from octave 1 to octave 8.</p>
         </header>
 
-        <button id="play-button" class="play-button" type="button">Play Garden</button>
+        <button id="play-button" class="playButton" type="button">Play Garden</button>
 
-        <section id="sound-canvas" class="sound-canvas" aria-label="Two-dimensional sound mapping canvas">
-            <span class="axis-label axis-label--high" aria-hidden="true">B</span>
-            <span class="axis-label axis-label--low" aria-hidden="true">C</span>
-            <span class="axis-label axis-label--left" aria-hidden="true">Octave 1</span>
-            <span class="axis-label axis-label--right" aria-hidden="true">Octave 8</span>
+        <section
+            id="sound-canvas"
+            class="soundCanvas"
+            aria-label="Two-dimensional sound mapping canvas"
+        >
+            <span class="axisLabel axisLabelHigh" aria-hidden="true">B</span>
+            <span class="axisLabel axisLabelLow" aria-hidden="true">C</span>
+            <span class="axisLabel axisLabelLeft" aria-hidden="true">Octave 1</span>
+            <span class="axisLabel axisLabelRight" aria-hidden="true">Octave 8</span>
 
-            <button class="sound-object sound-object--one" type="button" aria-label="Drag sound object 1">
+            <button
+                class="soundObject soundObjectOne"
+                type="button"
+                aria-label="Drag sound object 1"
+            >
                 <span aria-hidden="true">&#10047;</span>
             </button>
-            <button class="sound-object sound-object--two" type="button" aria-label="Drag sound object 2">
+            <button
+                class="soundObject soundObjectTwo"
+                type="button"
+                aria-label="Drag sound object 2"
+            >
                 <span aria-hidden="true">&#10048;</span>
             </button>
         </section>
 
-        <section class="testing-info" aria-label="Current sound mapping values">
+        <section class="testingInfo" aria-label="Current sound mapping values">
             <p id="object-one-info"></p>
             <p id="object-two-info"></p>
         </section>

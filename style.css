@@ -1,3 +1,8 @@
+/*
+This stylesheet keeps the two mapping axes visible while giving both sound objects
+large touch targets. The crosshair supports comparison without adding feedback effects.
+*/
+
 :root {
     --ink: #263832;
     --canvas: #dce9d3;
@@ -59,7 +64,7 @@ h1 {
     font-size: 0.9rem;
 }
 
-.play-button {
+.playButton {
     padding: 0.7rem 1.2rem;
     border: 0.15rem solid var(--ink);
     border-radius: 999px;
@@ -69,18 +74,19 @@ h1 {
     font-weight: 700;
 }
 
-.play-button:disabled {
+.playButton:disabled {
     cursor: wait;
     opacity: 0.65;
 }
 
-.play-button:focus-visible,
-.sound-object:focus-visible {
+.playButton:focus-visible,
+.soundObject:focus-visible {
     outline: 0.2rem solid #ffffff;
     outline-offset: 0.2rem;
 }
 
-.sound-canvas {
+/* The centre guides distinguish the note and octave axes without adding controls. */
+.soundCanvas {
     position: relative;
     width: min(54rem, 92vw);
     height: min(58vh, 32rem);
@@ -89,14 +95,24 @@ h1 {
     border: 0.2rem solid var(--ink);
     border-radius: 0.7rem;
     background:
-        linear-gradient(to right, transparent calc(50% - 1px), var(--guide) 50%, transparent calc(50% + 1px)),
-        linear-gradient(to bottom, transparent calc(50% - 1px), var(--guide) 50%, transparent calc(50% + 1px)),
+        linear-gradient(
+            to right,
+            transparent calc(50% - 1px),
+            var(--guide) 50%,
+            transparent calc(50% + 1px)
+        ),
+        linear-gradient(
+            to bottom,
+            transparent calc(50% - 1px),
+            var(--guide) 50%,
+            transparent calc(50% + 1px)
+        ),
         var(--canvas);
     touch-action: none;
     user-select: none;
 }
 
-.axis-label {
+.axisLabel {
     position: absolute;
     z-index: 1;
     color: rgb(38 56 50 / 65%);
@@ -107,31 +123,32 @@ h1 {
     pointer-events: none;
 }
 
-.axis-label--high {
+.axisLabelHigh {
     top: 0.6rem;
     left: 50%;
     transform: translateX(-50%);
 }
 
-.axis-label--low {
+.axisLabelLow {
     bottom: 0.6rem;
     left: 50%;
     transform: translateX(-50%);
 }
 
-.axis-label--left {
+.axisLabelLeft {
     top: 50%;
     left: 0.6rem;
     transform: translateY(-50%);
 }
 
-.axis-label--right {
+.axisLabelRight {
     top: 50%;
     right: 0.6rem;
     transform: translateY(-50%);
 }
 
-.sound-object {
+/* Both objects use the same generous target so their mappings remain comparable. */
+.soundObject {
     position: absolute;
     z-index: 2;
     width: clamp(4rem, 11vw, 5rem);
@@ -146,22 +163,22 @@ h1 {
     touch-action: none;
 }
 
-.sound-object--one {
+.soundObjectOne {
     color: var(--object-one);
     background: var(--object-one-centre);
 }
 
-.sound-object--two {
+.soundObjectTwo {
     color: var(--object-two);
     background: var(--object-two-centre);
 }
 
-.sound-object.is-dragging {
+.soundObject.isDragging {
     cursor: grabbing;
     box-shadow: 0 0 0 0.25rem rgb(255 255 255 / 70%);
 }
 
-.testing-info {
+.testingInfo {
     display: grid;
     width: min(54rem, 92vw);
     gap: 0.35rem;
@@ -169,12 +186,13 @@ h1 {
     font-variant-numeric: tabular-nums;
 }
 
-.testing-info p {
+.testingInfo p {
     margin: 0;
 }
 
+/* Short screens keep enough movement space to expose both mappings. */
 @media (max-height: 650px) {
-    .sound-canvas {
+    .soundCanvas {
         height: 52vh;
         min-height: 18rem;
     }
